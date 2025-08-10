@@ -49,8 +49,10 @@ class SmartTaskKiller {
     console.clear();
     console.log(
       boxen(
-        chalk.cyan.bold('🧠 Smart Task-Killer') + '\n' +
-        chalk.gray('Intelligent AI Assistant with Context & Natural Language'),
+        chalk.cyan.bold('🧠 Smart Task-Killer v1.0.0') + '\n' +
+        chalk.gray('Professional AI Task Management • Multi-Operations • Analytics') + '\n' +
+        chalk.yellow('Context Memory • Natural Language • Telegram Bot • Bulk Actions') + '\n' +
+        chalk.dim('Author: csdlmysql'),
         {
           padding: 1,
           margin: 1,
@@ -61,14 +63,16 @@ class SmartTaskKiller {
       )
     );
 
-    console.log(chalk.yellow('💡 Smart Features:'));
-    console.log(chalk.gray('  • "create task fix bug urgent deadline tomorrow"'));
-    console.log(chalk.gray('  • "mark that task as completed" (remembers context)'));
-    console.log(chalk.gray('  • "delete task test" (find by name, no UUID needed)'));
-    console.log(chalk.gray('  • "create 3 tasks: A urgent, B medium, C low"'));
-    console.log(chalk.yellow('💻 Quick Commands:'));
-    console.log(chalk.gray('  • "/list" - all tasks, "/recent" - latest, "/stats" - analytics'));
-    console.log(chalk.gray('  • "/help" - full guide, "/clear" - clear screen, "exit" - quit\n'));
+    console.log(chalk.yellow('🎯 AI Features:'));
+    console.log(chalk.gray('  • "them 2 task sau: viet docs, fix bug" (multi-task creation)'));
+    console.log(chalk.gray('  • "delete all completed tasks" (bulk cleanup)'));
+    console.log(chalk.gray('  • "mark task1, task2 as urgent" (batch operations)'));
+    console.log(chalk.gray('  • Context memory: "complete that task" (remembers references)'));
+    
+    console.log(chalk.yellow('💻 Commands:'));
+    console.log(chalk.gray('  • "/cleanup" - bulk delete, "/stats" - analytics'));
+    console.log(chalk.gray('  • "/recent" - latest tasks, "/export" - backup'));
+    console.log(chalk.gray('  • "/help" - full guide, "exit" - quit\n'));
   }
 
   private async checkSetup() {
@@ -131,7 +135,7 @@ class SmartTaskKiller {
 
   private async handleSlashCommand(command: string) {
     const cmd = command.slice(1).toLowerCase();
-    const availableCommands = ['help', 'context', 'debug', 'reset', 'stats', 'list', 'recent', 'search', 'export', 'backup', 'config', 'clear'];
+    const availableCommands = ['help', 'context', 'debug', 'reset', 'stats', 'list', 'recent', 'search', 'export', 'backup', 'config', 'cleanup', 'clear'];
 
     if (availableCommands.includes(cmd)) {
       const result = await this.smartProcessor.handleSpecialCommand(cmd);
@@ -139,7 +143,7 @@ class SmartTaskKiller {
     } else {
       console.log(chalk.red(`❌ Unknown command "${command}"`));
       console.log(chalk.gray('💡 Available commands:'));
-      console.log(chalk.gray('   📋 Task Management: /list, /recent, /search'));
+      console.log(chalk.gray('   📋 Task Management: /list, /recent, /search, /cleanup'));
       console.log(chalk.gray('   📊 Analytics: /stats, /export'));  
       console.log(chalk.gray('   🔧 System: /help, /context, /reset, /config, /clear'));
       console.log(chalk.gray('   💾 Backup: /backup'));
@@ -276,8 +280,8 @@ class SmartTaskKiller {
     }
 
     const table = new Table({
-      head: ['ID', 'Title', 'Status', 'Priority', 'Deadline'],
-      colWidths: [10, 30, 15, 12, 15],
+      head: ['ID', 'Title', 'Description', 'Status', 'Priority', 'Deadline'],
+      colWidths: [10, 25, 20, 15, 12, 15],
       style: { head: ['cyan'], border: ['gray'] }
     });
 
@@ -299,9 +303,14 @@ class SmartTaskKiller {
       const deadline = task.due_date ? 
         new Date(task.due_date).toLocaleDateString('en-US') : '-';
 
+      const description = task.description 
+        ? (task.description.length > 18 ? task.description.slice(0, 18) + '...' : task.description)
+        : '-';
+
       table.push([
         task.id.slice(0, 8),
-        task.title.length > 25 ? task.title.slice(0, 25) + '...' : task.title,
+        task.title.length > 23 ? task.title.slice(0, 23) + '...' : task.title,
+        description,
         statusEmojis[task.status] + ' ' + task.status,
         priorityEmojis[task.priority] + ' ' + task.priority,
         deadline

@@ -1,18 +1,18 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { TelegramConfig, Task } from '../types/index.js';
-import { GeminiService } from './gemini.js';
+import { SmartTaskProcessor } from '../ai/SmartTaskProcessor.js';
 import { TaskRepository } from '../database/tasks.js';
 
 export class TelegramService {
   private bot: TelegramBot;
   private chatId: string;
-  private geminiService: GeminiService;
+  private smartProcessor: SmartTaskProcessor;
   private taskRepo: TaskRepository;
 
   constructor(config: TelegramConfig, geminiApiKey: string) {
     this.bot = new TelegramBot(config.token, { polling: true });
     this.chatId = config.chatId;
-    this.geminiService = new GeminiService(geminiApiKey);
+    this.smartProcessor = new SmartTaskProcessor(geminiApiKey);
     this.taskRepo = new TaskRepository();
     
     this.setupBotHandlers();
@@ -39,20 +39,55 @@ export class TelegramService {
   }
 
   private async handleCommand(msg: TelegramBot.Message) {
-    const command = msg.text?.split(' ')[0].toLowerCase();
+    const command = msg.text?.split(' ')[0].toLowerCase().substring(1); // Remove '/' 
 
     switch (command) {
-      case '/start':
-      case '/help':
+      case 'start':
+      case 'help':
         await this.sendWelcomeMessage(msg.chat.id);
         break;
       
-      case '/tasks':
-        await this.sendTaskList(msg.chat.id);
+      case 'list':
+      case 'tasks':
+        await this.handleSmartCommand('list', msg.chat.id);
         break;
       
-      case '/stats':
-        await this.sendTaskStats(msg.chat.id);
+      case 'recent':
+        await this.handleSmartCommand('recent', msg.chat.id);
+        break;
+      
+      case 'stats':
+        await this.handleSmartCommand('stats', msg.chat.id);
+        break;
+        
+      case 'search':
+        await this.handleSmartCommand('search', msg.chat.id);
+        break;
+        
+      case 'export':
+        await this.handleSmartCommand('export', msg.chat.id);
+        break;
+        
+      case 'backup':
+        await this.handleSmartCommand('backup', msg.chat.id);
+        break;
+        
+      case 'config':
+        await this.handleSmartCommand('config', msg.chat.id);
+        break;
+        
+      case 'context':
+      case 'debug':
+        await this.handleSmartCommand('context', msg.chat.id);
+        break;
+        
+      case 'reset':
+        await this.handleSmartCommand('reset', msg.chat.id);
+        break;
+        
+      case 'cleanup':
+      case 'delete-by-status':
+        await this.handleSmartCommand('cleanup', msg.chat.id);
         break;
       
       default:
@@ -64,33 +99,78 @@ export class TelegramService {
     }
   }
 
+  // Handle Smart commands using SmartTaskProcessor
+  private async handleSmartCommand(command: string, chatId: number) {
+    try {
+      await this.bot.sendChatAction(chatId, 'typing');
+
+      const result = await this.smartProcessor.handleSpecialCommand(command);
+      
+      await this.bot.sendMessage(
+        chatId,
+        this.escapeMarkdownV2(`🤖 ${result.message}`),
+        { parse_mode: 'MarkdownV2' }
+      );
+
+      // Send formatted data if available
+      if (result.data) {
+        await this.sendSmartData(chatId, result.data);
+      }
+
+      // Send follow-up suggestions
+      if (result.follow_up_suggestions?.length) {
+        const suggestionsText = '💡 Suggestions: ' + result.follow_up_suggestions.join(' • ');
+        await this.bot.sendMessage(
+          chatId,
+          this.escapeMarkdownV2(suggestionsText),
+          { parse_mode: 'MarkdownV2' }
+        );
+      }
+
+    } catch (error) {
+      await this.bot.sendMessage(
+        chatId,
+        this.escapeMarkdownV2(`❌ Error: ${error}`),
+        { parse_mode: 'MarkdownV2' }
+      );
+    }
+  }
+
   private async handleNaturalLanguage(msg: TelegramBot.Message) {
     try {
       await this.bot.sendChatAction(msg.chat.id, 'typing');
 
-      const response = await this.geminiService.processNaturalLanguage(msg.text || '');
-
-      if (response.needsMoreInfo) {
-        await this.bot.sendMessage(
-          msg.chat.id,
-          this.escapeMarkdownV2(`🤖 ${response.text}`),
-          { parse_mode: 'MarkdownV2' }
-        );
-        return;
-      }
-
-      const result = await this.executeFunction(response);
-      const aiResponse = await this.geminiService.generateResponse(msg.text || '', result);
+      // Use SmartTaskProcessor for conversational flow (same as CLI)
+      const result = await this.smartProcessor.handleConversationalFlow(msg.text || '');
 
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`🤖 ${aiResponse}`),
+        this.escapeMarkdownV2(`🤖 ${result.message}`),
         { parse_mode: 'MarkdownV2' }
       );
 
-      // Send formatted task details if it was a create or update operation
-      if (response.name === 'create_task' && result) {
-        await this.sendTaskDetails(msg.chat.id, result);
+      // Send formatted data if available  
+      if (result.data) {
+        await this.sendSmartData(msg.chat.id, result.data);
+      }
+
+      // Send follow-up suggestions
+      if (result.follow_up_suggestions?.length) {
+        const suggestionsText = '💡 Suggestions: ' + result.follow_up_suggestions.join(' • ');
+        await this.bot.sendMessage(
+          msg.chat.id,
+          this.escapeMarkdownV2(suggestionsText),
+          { parse_mode: 'MarkdownV2' }
+        );
+      }
+
+      // Show clarification tip if needed
+      if (result.needs_clarification) {
+        await this.bot.sendMessage(
+          msg.chat.id,
+          this.escapeMarkdownV2('💭 Tip: Be more specific so AI can understand better!'),
+          { parse_mode: 'MarkdownV2' }
+        );
       }
 
     } catch (error) {
@@ -102,74 +182,89 @@ export class TelegramService {
     }
   }
 
-  private async executeFunction(functionCall: any): Promise<any> {
-    const { name, args } = functionCall;
+  // Note: executeFunction method removed - now using SmartTaskProcessor directly
 
-    switch (name) {
-      case 'create_task':
-        return await this.taskRepo.createTask({
-          title: args.title,
-          description: args.description,
-          priority: args.priority || 'medium',
-          due_date: args.due_date ? new Date(args.due_date) : undefined,
-          category: args.category,
-          tags: args.tags ? args.tags.split(',').map((t: string) => t.trim()) : undefined
-        });
+  // Smart data display method (similar to CLI display)
+  private async sendSmartData(chatId: number, data: any) {
+    if (!data) return;
 
-      case 'list_tasks':
-        return await this.taskRepo.getTasks({
-          status: args.status,
-          priority: args.priority,
-          category: args.category,
-          limit: args.limit ? parseInt(args.limit) : undefined
-        });
-
-      case 'update_task':
-        return await this.taskRepo.updateTask({
-          id: args.id,
-          title: args.title,
-          description: args.description,
-          status: args.status,
-          priority: args.priority
-        });
-
-      case 'delete_task':
-        return await this.taskRepo.deleteTask(args.id);
-
-      case 'get_task_stats':
-        return await this.taskRepo.getTaskStats(args.period);
-
-      default:
-        throw new Error(`Unknown function: ${name}`);
+    // Handle different data types like CLI does
+    if (data.id && data.title) {
+      // Single task
+      await this.sendTaskDetails(chatId, data);
+    } else if (Array.isArray(data)) {
+      if (data.length > 0 && data[0].id && data[0].title) {
+        // Task list
+        await this.sendTaskList(chatId, null, data);
+      } else {
+        // Stats or other array data
+        await this.sendGenericData(chatId, data);
+      }
+    } else if (typeof data === 'object') {
+      // Stats, config, or other object data
+      await this.sendGenericData(chatId, data);
     }
+  }
+
+  private async sendGenericData(chatId: number, data: any) {
+    const dataString = JSON.stringify(data, null, 2);
+    await this.bot.sendMessage(
+      chatId,
+      this.escapeMarkdownV2(`📊 Data:\n\`\`\`\n${dataString}\n\`\`\``),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 
   private async sendWelcomeMessage(chatId: number) {
     const message = `
-🎯 *Welcome to Task\\-Killer\\!*
+🧠 *Smart Task\\-Killer v1\\.0\\.0*
+*Professional AI Task Management Assistant*
+_Author: csdlmysql_
 
-I'm your AI\\-powered task management assistant\\. You can interact with me using natural language or commands\\.
+🎯 *Advanced Features:*
+• Multi\\-task operations: "them 2 task: A, B"
+• Bulk cleanup: "delete all completed tasks"  
+• Context memory & natural language processing
+• Performance analytics & productivity insights
 
-*📋 Commands:*
-• \\/tasks \\- View your task list
-• \\/stats \\- View task statistics
-• \\/help \\- Show this help message
+*📋 Task Management Commands:*
+• \\/list \\- View all tasks
+• \\/recent \\- 10 most recent tasks
+• \\/search \\- Search tasks
+• \\/cleanup \\- Bulk delete by status
+
+*📊 Analytics & Data Commands:*
+• \\/stats \\- Detailed statistics
+• \\/export \\- Export tasks to JSON
+• \\/backup \\- Create full backup
+
+*🔧 System Commands:*
+• \\/config \\- View configuration
+• \\/context \\- Debug context info
+• \\/reset \\- Reset conversation context
 
 *💬 Natural Language Examples:*
-• "Create a high priority task to review the project proposal"
-• "Show me all pending tasks"
-• "Mark task abc123 as completed"
-• "What tasks do I have due this week?"
+• "them 2 task sau: viet docs, fix bug"
+• "delete all completed tasks"
+• "mark task1, task2 as urgent priority"
+• "show pending tasks with high priority"
 
-Just type your request naturally and I'll help you manage your tasks\\! 🚀
+*🧠 Smart Features:*
+• Multi\\-Task Operations: Create/update/delete multiple tasks
+• Bulk Cleanup: Delete all tasks by status
+• Context Memory: AI remembers task references
+• Performance Analytics: Track productivity patterns
+• Natural Language Processing
+
+Just chat naturally and I'll help you manage your tasks\\! 🚀
 `;
 
     await this.bot.sendMessage(chatId, message, { parse_mode: 'MarkdownV2' });
   }
 
-  private async sendTaskList(chatId: number, filters?: any) {
+  private async sendTaskList(chatId: number, filters?: any, tasksData?: any[]) {
     try {
-      const tasks = await this.taskRepo.getTasks(filters);
+      const tasks = tasksData || await this.taskRepo.getTasks(filters);
 
       if (tasks.length === 0) {
         await this.bot.sendMessage(
@@ -183,21 +278,32 @@ Just type your request naturally and I'll help you manage your tasks\\! 🚀
       let message = `📋 *Task List* \\(${tasks.length} tasks\\)\n\n`;
 
       tasks.slice(0, 10).forEach((task, index) => {
-        const statusEmoji = {
+        const statusEmojis: Record<string, string> = {
           pending: '⏳',
           in_progress: '🔄',
           completed: '✅',
           cancelled: '❌'
-        }[task.status];
+        };
+        const statusEmoji = statusEmojis[task.status] || '❓';
 
-        const priorityEmoji = {
+        const priorityEmojis: Record<string, string> = {
           urgent: '🔴',
           high: '🟡',
           medium: '🟢',
           low: '⚪'
-        }[task.priority];
+        };
+        const priorityEmoji = priorityEmojis[task.priority] || '⚫';
 
         message += `${statusEmoji} ${priorityEmoji} *${this.escapeMarkdownV2(task.title)}*\n`;
+        
+        // Add description if exists
+        if (task.description) {
+          const shortDescription = task.description.length > 50 
+            ? task.description.slice(0, 50) + '...' 
+            : task.description;
+          message += `   📝 ${this.escapeMarkdownV2(shortDescription)}\n`;
+        }
+        
         message += `   ID: \`${task.id.slice(0, 8)}\`\n`;
         
         if (task.due_date) {

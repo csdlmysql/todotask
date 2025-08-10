@@ -1,7 +1,7 @@
 {
   "name": "task-killer",
   "version": "1.0.0",
-  "description": "AI-powered task management CLI tool with Gemini integration",
+  "description": "Smart Task-Killer - Professional AI-powered task management CLI tool with intelligent context memory, natural language processing, multi-task operations, productivity analytics, and Telegram bot integration. Features include bulk operations, performance tracking, smart automation, and seamless cross-platform support.",
   "main": "dist/index.js",
   "bin": {
     "task-killer": "./src/index-smart.ts"
@@ -47,7 +47,7 @@
     "gemini",
     "telegram"
   ],
-  "author": "",
+  "author": "csdlmysql",
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

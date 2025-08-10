@@ -13,7 +13,7 @@ export class TaskRepository {
   }
 
   async createTask(input: CreateTaskInput): Promise<Task> {
-    // Tự động set deadline mặc định là 1 ngày nếu không được chỉ định
+    // Auto set default deadline to 1 day if not specified
     const defaultDeadline = new Date();
     defaultDeadline.setDate(defaultDeadline.getDate() + 1);
     

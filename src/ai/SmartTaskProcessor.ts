@@ -28,6 +28,35 @@ export class SmartTaskProcessor {
   async initialize(): Promise<void> {
     if (this.initialized) return;
     
+    // Initialize system instructions and context
+    this.contextManager.addMessage('bot', `
+🧠 SMART TASK-KILLER ASSISTANT INITIALIZED
+
+📋 ROLE DEFINITION:
+You are a professional task management AI assistant specialized in:
+• Task lifecycle management (create, update, track, analyze)
+• Performance analytics and productivity insights
+• Context memory and conversation continuity
+• Smart automation and priority optimization
+• Workflow efficiency recommendations
+
+🎯 CORE OBJECTIVES:
+1. Help users manage tasks efficiently
+2. Track performance patterns and trends  
+3. Provide actionable productivity insights
+4. Remember context for seamless conversations
+5. Automate repetitive task management processes
+
+💡 PERSONALITY TRAITS:
+• Professional and efficient
+• Proactive with suggestions
+• Context-aware and helpful
+• Focus on productivity optimization
+• Data-driven insights and recommendations
+
+Ready to assist with intelligent task management!
+    `);
+    
     try {
       // Load recent tasks into context for reference resolution
       const { TaskRepository } = await import('../database/tasks.js');
@@ -144,8 +173,17 @@ export class SmartTaskProcessor {
     // Execute operations in order
     for (const operation of analysis.operations.sort((a, b) => a.order - b.order)) {
       try {
+        // Map operation action to primary action
+        const actionMapping: Record<string, any> = {
+          'create_task': 'create',
+          'update_task': 'update', 
+          'delete_task': 'delete',
+          'read_task': 'read',
+          'search_task': 'search'
+        };
+
         const operationAnalysis: IntentAnalysis = {
-          primary_action: operation.action as any,
+          primary_action: actionMapping[operation.action] || operation.action as any,
           entities: operation.entities,
           context_usage: analysis.context_usage,
           confidence: analysis.confidence,
@@ -196,8 +234,8 @@ export class SmartTaskProcessor {
       analysis,
       context_summary: this.contextManager.getContextSummary(),
       follow_up_suggestions: allSuccessful ? [
-        'View operation results',
-        'Continue with other operations',
+        'Check task progress analytics',
+        'Review productivity patterns',
         'View task list'
       ] : [
         'Retry failed operation',
@@ -410,6 +448,46 @@ export class SmartTaskProcessor {
           return { success: false, message: `❌ Backup error: ${error}` };
         }
 
+      case 'cleanup':
+      case 'delete-by-status':
+        try {
+          // Get all tasks and group by status for user to choose
+          const allTasks = await taskRepo.getTasks();
+          const tasksByStatus = allTasks.reduce((acc: any, task: any) => {
+            if (!acc[task.status]) acc[task.status] = [];
+            acc[task.status].push(task);
+            return acc;
+          }, {});
+
+          const statusCounts = Object.entries(tasksByStatus).map(([status, tasks]: [string, any]) => ({
+            status,
+            count: tasks.length,
+            tasks: tasks.slice(0, 3).map((t: any) => t.title) // Show first 3 examples
+          }));
+
+          return {
+            success: true,
+            message: '🗑️ Tasks by Status - Use: "delete all [status] tasks"',
+            data: {
+              summary: 'Available statuses for bulk deletion:',
+              statuses: statusCounts,
+              examples: [
+                'delete all completed tasks',
+                'delete all cancelled tasks', 
+                'xoa tat ca task completed',
+                'cleanup pending tasks'
+              ]
+            },
+            follow_up_suggestions: [
+              'Delete completed tasks',
+              'Delete cancelled tasks',
+              'Show task statistics'
+            ]
+          };
+        } catch (error) {
+          return { success: false, message: `❌ Error loading task statuses: ${error}` };
+        }
+
       case 'config':
         const contextSummary = this.contextManager.getContextSummary();
         return {
@@ -448,6 +526,7 @@ export class SmartTaskProcessor {
 • /list - View all tasks
 • /recent - 10 most recent tasks 
 • /search - Search tasks
+• /cleanup - Bulk delete by status
 
 **📊 Analytics & Data:**
 • /stats - Detailed statistics

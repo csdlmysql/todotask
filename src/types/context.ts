@@ -119,6 +119,7 @@ export interface IntentAnalysis {
     deadline?: string; // ISO date or relative like "tomorrow"
     task_references?: string[]; // IDs or descriptions of referenced tasks
     task_id?: string; // Resolved task ID for updates/deletes
+    bulk_delete?: boolean; // For bulk delete operations by status
   };
 
   context_usage: {

@@ -32,7 +32,7 @@ export class GeminiExecutor {
       return {
         success: false,
         action: 'clarification',
-        message: analysis.clarification_needed || 'Bạn có thể nói rõ hơn không?'
+        message: analysis.clarification_needed || 'Can you be more specific?'
       };
     }
 
@@ -176,7 +176,7 @@ export class GeminiExecutor {
       return {
         success: false,
         action: 'create',
-        message: 'Thiếu tiêu đề task. Bạn muốn tạo task gì?'
+        message: 'Task title is required. What task do you want to create?'
       };
     }
 
@@ -187,7 +187,7 @@ export class GeminiExecutor {
         priority: entities.priority || context.user_preferences?.defaultPriority || 'medium',
         category: entities.category || context.user_preferences?.defaultCategory,
         tags: entities.tags,
-        due_date: entities.deadline ? new Date(entities.deadline) : undefined
+        due_date: entities.deadline ? this.parseValidDate(entities.deadline) : undefined
       };
 
       const task = await this.taskRepo.createTask(taskInput);
@@ -196,7 +196,7 @@ export class GeminiExecutor {
         success: true,
         action: 'create',
         data: task,
-        message: `✅ Đã tạo task "${task.title}" thành công!`,
+        message: `✅ Task "${task.title}" created successfully! 📈 Keep up the productivity momentum.`,
         context_updates: {
           entities: { 
             lastTask: task,
@@ -206,9 +206,9 @@ export class GeminiExecutor {
           preferences: this.learnFromTask(taskInput, context.user_preferences)
         },
         follow_up_suggestions: [
-          'Xem chi tiết task',
-          'Tạo task tiếp theo', 
-          'Xem danh sách task'
+          'Track task progress',
+          'Set productivity goals', 
+          'Analyze task patterns'
         ]
       };
     } catch (error) {
@@ -259,13 +259,13 @@ export class GeminiExecutor {
           }
         },
         follow_up_suggestions: tasks.length > 0 ? [
-          'Xem chi tiết task đầu tiên',
-          'Lọc thêm theo tiêu chí khác',
-          'Cập nhật task nào đó'
+          'Review task priorities',
+          'Analyze completion trends',
+          'Optimize task workflow'
         ] : [
-          'Tạo task mới',
-          'Xem tất cả task',
-          'Tìm task khác'
+          'Create first task',
+          'Set productivity goals',
+          'Setup task categories'
         ]
       };
     } catch (error) {
@@ -292,7 +292,7 @@ export class GeminiExecutor {
       return {
         success: false,
         action: 'update',
-        message: 'Không thể xác định chính xác task nào để cập nhật. Vui lòng nói rõ hơn về task cần chỉnh sửa.',
+        message: 'Cannot identify which task to update. Please be more specific about the task to modify.',
         needs_clarification: true
       };
     }
@@ -304,7 +304,7 @@ export class GeminiExecutor {
       if (entities.description) updateData.description = entities.description;
       if (entities.status) updateData.status = entities.status;
       if (entities.priority) updateData.priority = entities.priority;
-      if (entities.deadline) updateData.due_date = new Date(entities.deadline);
+      if (entities.deadline) updateData.due_date = this.parseValidDate(entities.deadline);
       if (entities.category) updateData.category = entities.category;
       if (entities.tags) updateData.tags = entities.tags;
 
@@ -314,7 +314,7 @@ export class GeminiExecutor {
         return {
           success: false,
           action: 'update',
-          message: 'Không tìm thấy task để cập nhật.'
+          message: 'Task not found for update.'
         };
       }
 
@@ -344,6 +344,11 @@ export class GeminiExecutor {
   private async executeDeleteTask(analysis: IntentAnalysis, context: any, contextManager: ConversationContextManager): Promise<ExecutionResult> {
     const entities = analysis.entities;
 
+    // Handle bulk delete by status
+    if (entities.bulk_delete && entities.status) {
+      return await this.executeBulkDeleteByStatus(entities.status);
+    }
+
     // Flexible task resolution từ entities.task_id 
     let taskId: string | null = null;
 
@@ -356,7 +361,7 @@ export class GeminiExecutor {
       return {
         success: false,
         action: 'delete',
-        message: 'Không thể xác định chính xác task nào để xóa. Vui lòng nói rõ hơn về task cần xóa.',
+        message: 'Cannot identify which task to delete. Please be more specific about the task to remove.',
         needs_clarification: true
       };
     }
@@ -368,7 +373,7 @@ export class GeminiExecutor {
         return {
           success: false,
           action: 'delete',
-          message: 'Không tìm thấy task để xóa.'
+          message: 'Task not found for deletion.'
         };
       }
 
@@ -376,11 +381,11 @@ export class GeminiExecutor {
         success: true,
         action: 'delete',
         data: { task_id: entities.task_id },
-        message: '🗑️ Đã xóa task thành công!',
+        message: '🗑️ Task deleted successfully!',
         follow_up_suggestions: [
-          'Xem danh sách task còn lại',
-          'Tạo task mới',
-          'Undo thao tác vừa rồi'
+          'View remaining tasks',
+          'Create new task',
+          'Show task statistics'
         ]
       };
     } catch (error) {
@@ -400,7 +405,7 @@ export class GeminiExecutor {
       return {
         success: false,
         action: 'search',
-        message: 'Cần từ khóa để tìm kiếm task.'
+        message: 'Search keyword is required.'
       };
     }
 
@@ -461,12 +466,25 @@ export class GeminiExecutor {
   private async executeWithGeminiFunction(analysis: IntentAnalysis, context: any, contextManager: ConversationContextManager): Promise<ExecutionResult> {
     // Fallback to Gemini function calling for complex operations
     const prompt = `
-Execute the following task management operation:
+🧠 SMART TASK-KILLER ASSISTANT - EXECUTION MODE
 
+📋 IDENTITY: Professional Task Management AI Assistant
+• Focus: Productivity optimization and performance tracking
+• Capabilities: Context memory, smart automation, analytics
+• Mission: Execute task operations efficiently and provide insights
+
+🎯 EXECUTION CONTEXT:
 ANALYSIS: ${JSON.stringify(analysis)}
 CONTEXT: ${JSON.stringify(context)}
 
-Call the appropriate function based on the analysis.
+🚀 EXECUTION INSTRUCTIONS:
+1. Execute the primary task operation based on analysis
+2. Maintain context awareness for references
+3. Provide performance insights when applicable
+4. Suggest productivity improvements
+5. Track patterns for future optimization
+
+Call the appropriate function to complete this task management operation.
 `;
 
     try {
@@ -563,7 +581,7 @@ Call the appropriate function based on the analysis.
           if (args.description) updateData.description = args.description;
           if (args.status) updateData.status = args.status;
           if (args.priority) updateData.priority = args.priority;
-          if (args.deadline) updateData.due_date = new Date(args.deadline);
+          if (args.deadline) updateData.due_date = this.parseValidDate(args.deadline);
           if (args.category) updateData.category = args.category;
 
           const updatedTask = await this.taskRepo.updateTask(updateData);
@@ -697,5 +715,123 @@ Call the appropriate function based on the analysis.
         }
       }
     ];
+  }
+
+  private async executeBulkDeleteByStatus(status: string): Promise<ExecutionResult> {
+    try {
+      // First, get all tasks with the specified status
+      const tasksToDelete = await this.taskRepo.getTasks({ status });
+      
+      if (tasksToDelete.length === 0) {
+        return {
+          success: false,
+          action: 'delete',
+          message: `📭 No tasks found with status "${status}"`
+        };
+      }
+
+      // Show confirmation-like message with count
+      const statusEmojis: Record<string, string> = {
+        completed: '✅',
+        cancelled: '❌', 
+        pending: '⏳',
+        in_progress: '🔄'
+      };
+      const emoji = statusEmojis[status] || '📋';
+
+      // Delete all tasks with the specified status
+      let deletedCount = 0;
+      const failedTasks = [];
+
+      for (const task of tasksToDelete) {
+        try {
+          const deleted = await this.taskRepo.deleteTask(task.id);
+          if (deleted) {
+            deletedCount++;
+          } else {
+            failedTasks.push(task.title);
+          }
+        } catch (error) {
+          failedTasks.push(task.title);
+        }
+      }
+
+      if (deletedCount === 0) {
+        return {
+          success: false,
+          action: 'delete', 
+          message: `❌ Failed to delete any ${status} tasks`
+        };
+      }
+
+      let message = `🗑️ Successfully deleted ${deletedCount} ${status} tasks ${emoji}`;
+      if (failedTasks.length > 0) {
+        message += `\n⚠️ Failed to delete ${failedTasks.length} tasks: ${failedTasks.slice(0, 3).join(', ')}`;
+      }
+
+      return {
+        success: true,
+        action: 'delete',
+        message,
+        data: {
+          deleted_count: deletedCount,
+          failed_count: failedTasks.length,
+          status,
+          total_found: tasksToDelete.length
+        },
+        follow_up_suggestions: [
+          'Show remaining tasks',
+          'View task statistics', 
+          'Create new task'
+        ]
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        action: 'delete',
+        message: `❌ Error during bulk delete: ${error}`
+      };
+    }
+  }
+
+  private parseValidDate(dateInput: string | Date): Date | undefined {
+    try {
+      let date: Date;
+      
+      if (dateInput instanceof Date) {
+        date = dateInput;
+      } else if (typeof dateInput === 'string') {
+        // Handle common date formats
+        if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // YYYY-MM-DD format
+          date = new Date(dateInput + 'T00:00:00.000Z');
+        } else if (dateInput.match(/^\d{4}-\d{2}-\d{2}T/)) {
+          // ISO format with time
+          date = new Date(dateInput);
+        } else {
+          // Try parsing directly
+          date = new Date(dateInput);
+        }
+      } else {
+        return undefined;
+      }
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid date: ${dateInput}, using tomorrow as fallback`);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow;
+      }
+      
+      return date;
+    } catch (error) {
+      console.warn(`Date parsing error for ${dateInput}:`, error);
+      // Fallback to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow;
+    }
   }
 }
