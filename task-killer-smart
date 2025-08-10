@@ -1,0 +1,168 @@
+#!/bin/bash
+
+# Smart Task-Killer Portable Executable
+# This script is self-contained and works from any location
+
+# Get the absolute path of this script
+SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$0" 2>/dev/null || echo "$0")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+
+# Project paths - these need to be set correctly
+PROJECT_ROOT="/Users/csdlmysql/p/mybots/taskkiller"
+SOURCE_DIR="$PROJECT_ROOT/src"
+NODE_MODULES="$PROJECT_ROOT/node_modules"
+
+# Function to setup user configuration
+setup_config() {
+    CONFIG_DIR="$HOME/.task-killer"
+    
+    if [ ! -d "$CONFIG_DIR" ]; then
+        echo -e "\033[0;36m📁 Setting up Smart Task-Killer configuration...\033[0m"
+        mkdir -p "$CONFIG_DIR"
+        
+        # Create comprehensive .env file
+        cat > "$CONFIG_DIR/.env" << 'ENVEOF'
+# Smart Task-Killer Configuration
+# ================================
+
+# 🤖 AI Configuration (Required)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# 💾 Database Configuration  
+DATABASE_URL=postgresql://localhost:5432/tasks
+# Alternative: SQLite (simpler setup)
+# DATABASE_URL=sqlite:./smart-tasks.db
+
+# 🔔 Notification Settings
+ENABLE_NOTIFICATIONS=true
+ENABLE_DESKTOP_NOTIFICATIONS=true
+
+# 📱 Telegram Bot (Optional)
+# TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+# TELEGRAM_CHAT_ID=your_chat_id
+
+# 🧠 Smart Features
+ENABLE_CONTEXT_MEMORY=true
+ENABLE_SMART_SUGGESTIONS=true
+MAX_CONTEXT_MESSAGES=50
+
+# 🎨 Interface Settings
+ENABLE_COLORS=true
+ENABLE_EMOJIS=true
+DEFAULT_LANGUAGE=en
+
+# 🔧 Development
+NODE_ENV=production
+DEBUG_MODE=false
+ENVEOF
+        
+        echo -e "\033[0;32m✅ Created config at: $CONFIG_DIR/.env\033[0m"
+        echo ""
+        echo -e "\033[1;33m⚠️  IMPORTANT: Please edit your API key:\033[0m"
+        echo -e "\033[0;37m   $CONFIG_DIR/.env\033[0m"
+        echo ""
+        echo -e "\033[0;36m🔗 Get your Gemini API key:\033[0m"
+        echo -e "\033[0;37m   https://makersuite.google.com/app/apikey\033[0m"
+        echo ""
+    fi
+    
+    # Change to config directory for database files
+    cd "$CONFIG_DIR"
+    
+    # Load environment variables
+    if [ -f ".env" ]; then
+        export $(grep -v '^#' .env | grep -v '^$' | xargs) 2>/dev/null || true
+    fi
+}
+
+# Function to check requirements
+check_requirements() {
+    # Check if Node.js is available
+    if ! command -v node &> /dev/null; then
+        echo -e "\033[0;31m❌ Node.js is required but not installed.\033[0m"
+        echo -e "\033[0;37m   Please install Node.js from: https://nodejs.org/\033[0m"
+        exit 1
+    fi
+    
+    # Check Node version (need 16+)
+    NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -lt 16 ]; then
+        echo -e "\033[0;31m❌ Node.js version 16+ required, found: $(node -v)\033[0m"
+        exit 1
+    fi
+    
+    # Check if project files exist
+    if [ ! -f "$SOURCE_DIR/index-smart.ts" ]; then
+        echo -e "\033[0;31m❌ Source files not found at: $SOURCE_DIR\033[0m"
+        echo -e "\033[0;37m   This executable must be run from the project directory or\033[0m"
+        echo -e "\033[0;37m   the project files must be available at: $PROJECT_ROOT\033[0m"
+        exit 1
+    fi
+    
+    # Check if node_modules exists
+    if [ ! -d "$NODE_MODULES" ]; then
+        echo -e "\033[0;33m⚠️  Dependencies not found. Installing...\033[0m"
+        cd "$PROJECT_ROOT"
+        npm install
+        cd - > /dev/null
+    fi
+}
+
+# Function to show help
+show_help() {
+    echo -e "\033[1;36m🧠 Smart Task-Killer Help\033[0m"
+    echo ""
+    echo -e "\033[1;37mUsage:\033[0m task-killer-smart [options]"
+    echo ""
+    echo -e "\033[1;37mOptions:\033[0m"
+    echo -e "  -h, --help     Show this help"
+    echo -e "  --config       Open config file"
+    echo -e "  --version      Show version"
+    echo ""
+    echo -e "\033[1;37mExamples:\033[0m"
+    echo -e "  task-killer-smart                    # Start interactive mode"
+    echo -e "  task-killer-smart --config           # Edit configuration"
+    echo ""
+    echo -e "\033[1;37mInteractive Commands:\033[0m"
+    echo -e "  \"create task fix bug urgent deadline tomorrow\""
+    echo -e "  \"show me all pending tasks\""
+    echo -e "  \"mark that task as completed\""
+    echo -e "  /help                                 # Full command list"
+    echo -e "  /stats                               # View statistics"
+    echo -e "  exit                                 # Quit application"
+    exit 0
+}
+
+# Handle command line arguments
+case "$1" in
+    "--help"|"-h")
+        show_help
+        ;;
+    "--config")
+        CONFIG_DIR="$HOME/.task-killer"
+        mkdir -p "$CONFIG_DIR"
+        ${EDITOR:-nano} "$CONFIG_DIR/.env"
+        exit 0
+        ;;
+    "--version")
+        echo "Smart Task-Killer v1.0.0"
+        exit 0
+        ;;
+esac
+
+# Main execution
+main() {
+    echo -e "\033[1;36m🧠 Smart Task-Killer\033[0m"
+    echo -e "\033[0;37mAI-Powered Task Management\033[0m"
+    echo ""
+    
+    check_requirements
+    setup_config
+    
+    # Run the smart application from the project directory
+    cd "$PROJECT_ROOT"
+    exec npx tsx src/index-smart.ts "$@"
+}
+
+# Run main function
+main "$@"

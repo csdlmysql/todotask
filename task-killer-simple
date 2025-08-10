@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Task-Killer Simple Wrapper Script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Setup config directory in user home if needed
+CONFIG_DIR="$HOME/.task-killer"
+if [ ! -d "$CONFIG_DIR" ]; then
+    mkdir -p "$CONFIG_DIR"
+    
+    # Create default .env if it doesn't exist
+    if [ ! -f "$CONFIG_DIR/.env" ]; then
+        cat > "$CONFIG_DIR/.env" << 'EOF'
+# Task-Killer Configuration
+GEMINI_API_KEY=your_gemini_api_key_here
+DATABASE_URL=postgresql://localhost:5432/tasks
+ENABLE_NOTIFICATIONS=true
+
+# Optional: Telegram Bot (for notifications)
+# TELEGRAM_BOT_TOKEN=your_bot_token
+# TELEGRAM_CHAT_ID=your_chat_id
+EOF
+        echo "📝 Created config at: $CONFIG_DIR/.env"
+        echo "⚠️  Please edit .env and add your GEMINI_API_KEY"
+        echo "🔗 Get API key: https://makersuite.google.com/app/apikey"
+        echo ""
+    fi
+fi
+
+# Change to config directory for database files
+cd "$CONFIG_DIR"
+
+# Load environment
+export $(cat .env | grep -v ^# | xargs) 2>/dev/null || true
+
+# Change back to script directory and run
+cd "$SCRIPT_DIR"
+
+# Run the TypeScript application
+npx tsx src/index-smart.ts "$@"

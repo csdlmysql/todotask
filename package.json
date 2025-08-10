@@ -1,0 +1,77 @@
+{
+  "name": "task-killer",
+  "version": "1.0.0",
+  "description": "AI-powered task management CLI tool with Gemini integration",
+  "main": "dist/index.js",
+  "bin": {
+    "task-killer": "./src/index-smart.ts"
+  },
+  "pkg": {
+    "scripts": [
+      "src/**/*.ts",
+      "src/**/*.js"
+    ],
+    "assets": [
+      "src/database/schema.sql"
+    ],
+    "targets": [
+      "node18-macos-x64",
+      "node18-linux-x64",
+      "node18-win-x64"
+    ]
+  },
+  "scripts": {
+    "dev": "tsx src/index-smart.ts",
+    "simple": "tsx src/index-simple.ts",
+    "smart": "tsx src/index-smart.ts",
+    "dev-old": "tsx src/index.ts",
+    "build": "tsc --noEmit false || true",
+    "start": "tsx src/index-smart.ts",
+    "start-old": "node dist/index.js",
+    "init-db": "tsx src/database/init.ts",
+    "db:migrate": "tsx src/database/migrate.ts",
+    "build-executable": "./build-executable.sh",
+    "build-smart": "./build-smart.sh",
+    "build-simple": "./build-bundle.sh",
+    "build-all": "./build-all.sh",
+    "telegram": "tsx start-telegram-bot.ts",
+    "telegram-setup": "./setup-telegram.sh",
+    "telegram-run": "./run-telegram.sh",
+    "pkg-build": "pkg . --output task-killer --targets node18-macos-x64,node18-linux-x64,node18-win-x64"
+  },
+  "keywords": [
+    "cli",
+    "task",
+    "todo",
+    "ai",
+    "gemini",
+    "telegram"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "boxen": "^8.0.1",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "inquirer": "^12.0.0",
+    "node-notifier": "^10.0.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "ora": "^8.1.0",
+    "pg": "^8.12.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^22.5.4",
+    "@types/node-notifier": "^8.0.5",
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "@types/pg": "^8.11.8",
+    "@types/uuid": "^10.0.0",
+    "pkg": "^5.8.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
