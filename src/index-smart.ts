@@ -8,15 +8,19 @@ import Table from 'cli-table3';
 import { SmartTaskProcessor, ProcessingResult } from './ai/SmartTaskProcessor.js';
 import { initDatabaseSafe } from './database/init-safe.js';
 import { HealthChecker } from './utils/health-check.js';
+import { UserRepository } from './database/users.js';
 
 dotenv.config();
 
 class SmartTaskKiller {
   private smartProcessor: SmartTaskProcessor;
   private healthChecker: HealthChecker;
+  private userRepo: UserRepository;
+  private cliUserId: string | null = null;
 
   constructor() {
     this.healthChecker = new HealthChecker();
+    this.userRepo = new UserRepository();
     
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
@@ -81,6 +85,43 @@ class SmartTaskKiller {
     } catch (error) {
       console.log(chalk.green('✅ Database is ready!'));
     }
+
+    // Setup default CLI user
+    await this.setupCliUser();
+  }
+
+  private async setupCliUser() {
+    try {
+      // Check for CLI_USER_EMAIL in environment or use default
+      const cliEmail = process.env.CLI_USER_EMAIL || 'cli@localhost';
+      const cliName = process.env.CLI_USER_NAME || 'CLI User';
+      
+      // Try to find existing CLI user
+      let cliUser = await this.userRepo.getUserByEmail(cliEmail);
+      
+      if (!cliUser) {
+        // Create new CLI user if doesn't exist
+        console.log(chalk.yellow('🔧 Creating CLI user...'));
+        cliUser = await this.userRepo.createUser({
+          telegram_id: 0, // Special ID for CLI user
+          email: cliEmail,
+          name: cliName,
+          role: 'admin', // CLI user gets admin role
+          status: 'active'
+        });
+        console.log(chalk.green('✅ CLI user created successfully!'));
+      }
+      
+      // Set user context for SmartTaskProcessor
+      this.cliUserId = cliUser.id;
+      this.smartProcessor.setUserContext(cliUser.id);
+      
+      console.log(chalk.cyan(`👤 Using CLI user: ${cliUser.name} (${cliUser.email})`));
+      
+    } catch (error) {
+      console.warn(chalk.yellow('⚠️ Could not setup CLI user, continuing without user context'));
+      console.warn(chalk.gray('Tasks will be created without user association'));
+    }
   }
 
   private async startSmartInteractiveMode() {
@@ -135,7 +176,7 @@ class SmartTaskKiller {
 
   private async handleSlashCommand(command: string) {
     const cmd = command.slice(1).toLowerCase();
-    const availableCommands = ['help', 'context', 'debug', 'reset', 'stats', 'list', 'recent', 'search', 'export', 'backup', 'config', 'cleanup', 'clear'];
+    const availableCommands = ['help', 'context', 'debug', 'reset', 'stats', 'list', 'mylist', 'recent', 'search', 'export', 'backup', 'config', 'cleanup', 'clear'];
 
     if (availableCommands.includes(cmd)) {
       const result = await this.smartProcessor.handleSpecialCommand(cmd);
@@ -143,7 +184,7 @@ class SmartTaskKiller {
     } else {
       console.log(chalk.red(`❌ Unknown command "${command}"`));
       console.log(chalk.gray('💡 Available commands:'));
-      console.log(chalk.gray('   📋 Task Management: /list, /recent, /search, /cleanup'));
+      console.log(chalk.gray('   📋 Task Management: /list (all), /mylist (own), /recent, /search, /cleanup'));
       console.log(chalk.gray('   📊 Analytics: /stats, /export'));  
       console.log(chalk.gray('   🔧 System: /help, /context, /reset, /config, /clear'));
       console.log(chalk.gray('   💾 Backup: /backup'));

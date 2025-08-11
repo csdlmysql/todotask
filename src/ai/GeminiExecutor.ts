@@ -7,6 +7,7 @@ export class GeminiExecutor {
   private genAI: GoogleGenerativeAI;
   private model: any;
   private taskRepo: TaskRepository;
+  private currentUserId: string | null = null;
 
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
@@ -19,6 +20,16 @@ export class GeminiExecutor {
       }
     });
     this.taskRepo = new TaskRepository();
+  }
+
+  // Set the current user context
+  setUserContext(userId: string): void {
+    this.currentUserId = userId;
+  }
+
+  // Clear user context
+  clearUserContext(): void {
+    this.currentUserId = null;
   }
 
   async executeInstructions(
@@ -180,8 +191,17 @@ export class GeminiExecutor {
       };
     }
 
+    if (!this.currentUserId) {
+      return {
+        success: false,
+        action: 'create',
+        message: 'User context is required to create tasks.'
+      };
+    }
+
     try {
       const taskInput = {
+        user_id: this.currentUserId,
         title: entities.title,
         description: entities.description,
         priority: entities.priority || context.user_preferences?.defaultPriority || 'medium',
@@ -223,8 +243,16 @@ export class GeminiExecutor {
   private async executeReadTasks(analysis: IntentAnalysis, context: any): Promise<ExecutionResult> {
     const entities = analysis.entities;
 
+    if (!this.currentUserId) {
+      return {
+        success: false,
+        action: 'read',
+        message: 'User context is required to read tasks.'
+      };
+    }
+
     try {
-      const filters: any = {};
+      const filters: any = { user_id: this.currentUserId };
       if (entities.status) filters.status = entities.status;
       if (entities.priority) filters.priority = entities.priority;
       if (entities.category) filters.category = entities.category;

@@ -18,11 +18,24 @@ export class SmartTaskProcessor {
   private executor: GeminiExecutor;
   private contextManager: ConversationContextManager;
   private initialized: boolean = false;
+  private currentUserId: string | null = null;
 
   constructor(geminiApiKey: string) {
     this.analyzer = new GeminiAnalyzer(geminiApiKey);
     this.executor = new GeminiExecutor(geminiApiKey);
     this.contextManager = new ConversationContextManager();
+  }
+
+  // Set the current user context
+  setUserContext(userId: string): void {
+    this.currentUserId = userId;
+    this.executor.setUserContext(userId);
+  }
+
+  // Clear user context
+  clearUserContext(): void {
+    this.currentUserId = null;
+    this.executor.clearUserContext();
   }
 
   async initialize(): Promise<void> {
@@ -61,7 +74,10 @@ Ready to assist with intelligent task management!
       // Load recent tasks into context for reference resolution
       const { TaskRepository } = await import('../database/tasks.js');
       const taskRepo = new TaskRepository();
-      const recentTasks = await taskRepo.getTasks({ limit: 20 }); // Get last 20 tasks
+      
+      // Get tasks for the current user if context is set
+      const filters = this.currentUserId ? { user_id: this.currentUserId, limit: 20 } : { limit: 20 };
+      const recentTasks = await taskRepo.getTasks(filters);
       
       // Populate context with recent tasks
       this.contextManager.updateContext({
@@ -363,7 +379,80 @@ Ready to assist with intelligent task management!
         }
 
       case 'list':
-        return await this.processInput('view all tasks');
+        try {
+          // Check if user is admin to show all tasks
+          const { UserRepository } = await import('../database/users.js');
+          const userRepo = new UserRepository();
+          
+          if (this.currentUserId) {
+            const user = await userRepo.getUserById(this.currentUserId);
+            
+            if (user && user.role === 'admin') {
+              // Admin sees all tasks
+              const allTasks = await taskRepo.getTasks({ limit: 100 });
+              const allUsers = await userRepo.getAllUsers({ status: 'active' });
+              
+              // Create user map for display
+              const userMap = new Map(allUsers.map(u => [u.id, u.name]));
+              
+              // Group tasks by user
+              const tasksByUser = new Map<string, any[]>();
+              for (const task of allTasks) {
+                if (!tasksByUser.has(task.user_id)) {
+                  tasksByUser.set(task.user_id, []);
+                }
+                tasksByUser.get(task.user_id)!.push(task);
+              }
+              
+              let message = `📋 All Tasks (${allTasks.length} total)\n\n`;
+              
+              for (const [userId, userTasks] of tasksByUser) {
+                const userName = userMap.get(userId) || 'Unknown User';
+                message += `👤 ${userName} (${userTasks.length} tasks)\n`;
+                
+                userTasks.slice(0, 5).forEach(task => {
+                  const statusEmoji = {
+                    pending: '⏳',
+                    in_progress: '🔄',
+                    completed: '✅',
+                    cancelled: '❌'
+                  }[task.status] || '❓';
+                  
+                  const priorityEmoji = {
+                    urgent: '🔴',
+                    high: '🟡',
+                    medium: '🟢',
+                    low: '⚪'
+                  }[task.priority] || '⚫';
+                  
+                  message += `  ${statusEmoji} ${priorityEmoji} ${task.title}\n`;
+                });
+                
+                if (userTasks.length > 5) {
+                  message += `  ... and ${userTasks.length - 5} more\n`;
+                }
+                message += '\n';
+              }
+              
+              return {
+                success: true,
+                message: message.trim(),
+                data: allTasks,
+                follow_up_suggestions: ['Filter by user', 'View my tasks only', 'View statistics']
+              };
+            }
+          }
+          
+          // Regular user or no admin role - show own tasks
+          return await this.processInput('view all tasks');
+          
+        } catch (error) {
+          return { success: false, message: `❌ Error listing tasks: ${error}` };
+        }
+
+      case 'mylist':
+        // Always show own tasks only, regardless of role
+        return await this.processInput('view all my tasks');
 
       case 'recent':
         try {
@@ -523,7 +612,8 @@ Ready to assist with intelligent task management!
 🤖 Smart Task-Killer Commands
 
 **📋 Task Management:**
-• /list - View all tasks
+• /list - View all tasks (admin) or own tasks (user)
+• /mylist - View only your own tasks
 • /recent - 10 most recent tasks 
 • /search - Search tasks
 • /cleanup - Bulk delete by status

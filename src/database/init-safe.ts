@@ -61,9 +61,11 @@ export async function initDatabaseSafe(): Promise<void> {
           EXECUTE FUNCTION update_updated_at_column();
     `);
 
-    // Create or replace view
+    // Drop view if exists and recreate it to avoid column mismatch errors
+    await db.query(`DROP VIEW IF EXISTS task_stats;`);
+    
     await db.query(`
-      CREATE OR REPLACE VIEW task_stats AS
+      CREATE VIEW task_stats AS
       SELECT 
           status,
           priority,

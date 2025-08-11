@@ -20,12 +20,13 @@ export class TaskRepository {
     const dueDate = input.due_date || input.deadline || defaultDeadline;
     
     const query = `
-      INSERT INTO tasks (title, description, priority, due_date, category, tags)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO tasks (user_id, title, description, priority, due_date, category, tags)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
 
     const values = [
+      input.user_id,
       input.title,
       input.description || null,
       input.priority || 'medium',
@@ -39,6 +40,7 @@ export class TaskRepository {
   }
 
   async getTasks(filters?: {
+    user_id?: string;
     status?: string;
     priority?: string;
     category?: string;
@@ -47,6 +49,11 @@ export class TaskRepository {
     let query = 'SELECT * FROM tasks WHERE 1=1';
     const values: any[] = [];
     let paramCount = 0;
+
+    if (filters?.user_id) {
+      query += ` AND user_id = $${++paramCount}`;
+      values.push(filters.user_id);
+    }
 
     if (filters?.status) {
       query += ` AND status = $${++paramCount}`;
@@ -147,7 +154,7 @@ export class TaskRepository {
     return result.rowCount > 0;
   }
 
-  async getTaskStats(period?: string): Promise<any> {
+  async getTaskStats(filters?: { user_id?: string; period?: string }): Promise<any> {
     let query = `
       SELECT 
         status,
@@ -157,34 +164,132 @@ export class TaskRepository {
         COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as week,
         COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as month
       FROM tasks
+      WHERE 1=1
     `;
 
-    if (period === 'today') {
-      query += ' WHERE created_at >= CURRENT_DATE';
-    } else if (period === 'week') {
-      query += ' WHERE created_at >= CURRENT_DATE - INTERVAL \'7 days\'';
-    } else if (period === 'month') {
-      query += ' WHERE created_at >= CURRENT_DATE - INTERVAL \'30 days\'';
+    const values: any[] = [];
+    let paramCount = 0;
+
+    if (filters?.user_id) {
+      query += ` AND user_id = $${++paramCount}`;
+      values.push(filters.user_id);
+    }
+
+    if (filters?.period === 'today') {
+      query += ' AND created_at >= CURRENT_DATE';
+    } else if (filters?.period === 'week') {
+      query += ' AND created_at >= CURRENT_DATE - INTERVAL \'7 days\'';
+    } else if (filters?.period === 'month') {
+      query += ' AND created_at >= CURRENT_DATE - INTERVAL \'30 days\'';
     }
 
     query += ' GROUP BY status, priority ORDER BY status, priority';
 
-    const result = await this.db.query(query);
+    const result = await this.db.query(query, values);
     return result.rows;
   }
 
-  async searchTasks(searchTerm: string): Promise<Task[]> {
-    const query = `
+  async searchTasks(searchTerm: string, userId?: string): Promise<Task[]> {
+    let query = `
       SELECT * FROM tasks 
-      WHERE title ILIKE $1 
+      WHERE (title ILIKE $1 
          OR description ILIKE $1 
          OR $2 = ANY(tags)
-         OR category ILIKE $1
-      ORDER BY created_at DESC
+         OR category ILIKE $1)
     `;
     
-    const searchPattern = `%${searchTerm}%`;
-    const result = await this.db.query(query, [searchPattern, searchTerm]);
+    const values = [`%${searchTerm}%`, searchTerm];
+    
+    if (userId) {
+      query += ` AND user_id = $3`;
+      values.push(userId);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await this.db.query(query, values);
+    return result.rows;
+  }
+
+  // Add method to get user's task count
+  async getUserTaskCount(userId: string, status?: string): Promise<number> {
+    let query = 'SELECT COUNT(*) as count FROM tasks WHERE user_id = $1';
+    const values = [userId];
+    
+    if (status) {
+      query += ' AND status = $2';
+      values.push(status);
+    }
+    
+    const result = await this.db.query(query, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  // Add method to delete tasks by user (for cleanup)
+  async deleteTasksByUser(userId: string, status?: string): Promise<number> {
+    let query = 'DELETE FROM tasks WHERE user_id = $1';
+    const values = [userId];
+    
+    if (status) {
+      query += ' AND status = $2';
+      values.push(status);
+    }
+    
+    const result = await this.db.query(query, values);
+    return result.rowCount || 0;
+  }
+
+  async getUserDailyTasks(userId: string, date?: Date): Promise<Task[]> {
+    const targetDate = date || new Date();
+    const query = `
+      SELECT * FROM tasks 
+      WHERE user_id = $1 
+      AND (
+        DATE(created_at) = DATE($2) 
+        OR DATE(updated_at) = DATE($2)
+      )
+      ORDER BY updated_at DESC
+    `;
+    const result = await this.db.query(query, [userId, targetDate]);
+    return result.rows;
+  }
+
+  async getUserActivityToday(userId: string): Promise<{
+    created_today: number;
+    completed_today: number;
+    updated_today: number;
+    pending_tasks: number;
+  }> {
+    const query = `
+      SELECT 
+        COUNT(*) FILTER (WHERE DATE(created_at) = CURRENT_DATE) as created_today,
+        COUNT(*) FILTER (WHERE DATE(updated_at) = CURRENT_DATE AND status = 'completed') as completed_today,
+        COUNT(*) FILTER (WHERE DATE(updated_at) = CURRENT_DATE) as updated_today,
+        COUNT(*) FILTER (WHERE status = 'pending') as pending_tasks
+      FROM tasks 
+      WHERE user_id = $1
+    `;
+    const result = await this.db.query(query, [userId]);
+    return result.rows[0];
+  }
+
+  async getAllUsersActivityToday(): Promise<Array<{
+    user_id: string;
+    created_today: number;
+    completed_today: number;
+    updated_today: number;
+  }>> {
+    const query = `
+      SELECT 
+        user_id,
+        COUNT(*) FILTER (WHERE DATE(created_at) = CURRENT_DATE) as created_today,
+        COUNT(*) FILTER (WHERE DATE(updated_at) = CURRENT_DATE AND status = 'completed') as completed_today,
+        COUNT(*) FILTER (WHERE DATE(updated_at) = CURRENT_DATE) as updated_today
+      FROM tasks
+      GROUP BY user_id
+      HAVING COUNT(*) FILTER (WHERE DATE(created_at) = CURRENT_DATE OR DATE(updated_at) = CURRENT_DATE) > 0
+    `;
+    const result = await this.db.query(query);
     return result.rows;
   }
 }

@@ -1,5 +1,17 @@
+export interface User {
+  id: string;
+  telegram_id: number;
+  email: string;
+  name: string;
+  role: 'user' | 'admin';
+  status: 'inactive' | 'active';
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface Task {
   id: string;
+  user_id: string;
   title: string;
   description?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
@@ -12,7 +24,25 @@ export interface Task {
   category?: string;
 }
 
+export interface CreateUserInput {
+  telegram_id: number;
+  email: string;
+  name: string;
+  role?: 'user' | 'admin';
+  status?: 'inactive' | 'active';
+}
+
+export interface UpdateUserInput {
+  id?: string;
+  telegram_id?: number;
+  email?: string;
+  name?: string;
+  role?: 'user' | 'admin';
+  status?: 'inactive' | 'active';
+}
+
 export interface CreateTaskInput {
+  user_id: string;
   title: string;
   description?: string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
