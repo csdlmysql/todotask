@@ -353,7 +353,7 @@ export class TelegramService {
       if (result.needs_clarification) {
         await this.bot.sendMessage(
           msg.chat.id,
-          this.escapeMarkdownV2('💭 Tip: Be more specific so AI can understand better!'),
+          this.escapeMarkdownV2('💭 Tip: Be more specific so AI can understand better'),
           { parse_mode: 'MarkdownV2' }
         );
       }
@@ -455,7 +455,7 @@ _Author: csdlmysql_
 *🚀 Getting Started:*
 1\\. Register with \\/register command
 2\\. Wait for admin approval
-3\\. Start managing your tasks naturally\\!
+3\\. Start managing your tasks naturally
 `;
 
     await this.bot.sendMessage(chatId, message, { parse_mode: 'MarkdownV2' });
@@ -470,7 +470,7 @@ _Author: csdlmysql_
       if (tasks.length === 0) {
         await this.bot.sendMessage(
           chatId,
-          this.escapeMarkdownV2('📋 No tasks found from any user!'),
+          this.escapeMarkdownV2('📋 No tasks found from any user'),
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -570,7 +570,7 @@ _Author: csdlmysql_
       if (tasks.length === 0) {
         await this.bot.sendMessage(
           chatId,
-          this.escapeMarkdownV2('🎉 No tasks found! You\'re all caught up!'),
+          this.escapeMarkdownV2('🎉 No tasks found. You\'re all caught up'),
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -677,9 +677,9 @@ _Author: csdlmysql_
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       let dueDateStr = dueDate.toLocaleDateString();
-      if (diffDays === 0) dueDateStr += ' (Today!)';
+      if (diffDays === 0) dueDateStr += ' (Today)';
       else if (diffDays === 1) dueDateStr += ' (Tomorrow)';
-      else if (diffDays < 0) dueDateStr += ` (${Math.abs(diffDays)} days overdue!)`;
+      else if (diffDays < 0) dueDateStr += ` (${Math.abs(diffDays)} days overdue)`;
       
       message += `📅 ${this.escapeMarkdownV2(dueDateStr)}\n`;
     }
@@ -905,7 +905,7 @@ _Author: csdlmysql_
             const task = await this.taskRepo.getTaskById(taskId);
             
             if (!task) {
-              await this.bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Task not found!' });
+              await this.bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Task not found' });
               return;
             }
             
@@ -934,12 +934,12 @@ _Author: csdlmysql_
                 }
               }
             );
-            await this.bot.answerCallbackQuery(callbackQuery.id, { text: '📝 Cập nhật mô tả để hoàn thành!' });
+            await this.bot.answerCallbackQuery(callbackQuery.id, { text: '📝 Cập nhật mô tả để hoàn thành' });
             
           } else if (data?.startsWith('pending_')) {
             const taskId = data.replace('pending_', '');
             await this.taskRepo.updateTask({ id: taskId, status: 'pending' });
-            await this.bot.answerCallbackQuery(callbackQuery.id, { text: '⏳ Task marked as pending!' });
+            await this.bot.answerCallbackQuery(callbackQuery.id, { text: '⏳ Task marked as pending' });
             // Update the message to reflect new status
             await this.updateTaskMessage(callbackQuery.message, taskId);
             
@@ -1230,7 +1230,7 @@ _Author: csdlmysql_
     const existingUser = await this.userRepo.getUserByTelegramId(telegramId);
     if (existingUser) {
       const statusMessage = existingUser.status === 'active' 
-        ? '✅ You are already registered and active!'
+        ? '✅ You are already registered and active'
         : '⏳ You are already registered but inactive. Please wait for admin approval.';
       
       await this.bot.sendMessage(
@@ -1281,7 +1281,7 @@ _Author: csdlmysql_
           
           await this.bot.sendMessage(
             msg.chat.id,
-            this.escapeMarkdownV2('✅ Email accepted!\n\nNow please provide your full name:'),
+            this.escapeMarkdownV2('✅ Email accepted\n\nNow please provide your full name:'),
             { parse_mode: 'MarkdownV2' }
           );
         } else {
@@ -1409,7 +1409,7 @@ _Author: csdlmysql_
             console.log('[COMPLETE_TASK] Description too short:', userInput);
             await this.bot.sendMessage(
               msg.chat.id,
-              this.escapeMarkdownV2('⚠️ Mô tả quá ngắn\\! Cần ít nhất 10 ký tự\\. Vui lòng thử lại\\.'),
+              this.escapeMarkdownV2('⚠️ Mô tả quá ngắn. Cần ít nhất 10 ký tự. Vui lòng thử lại.'),
               { parse_mode: 'MarkdownV2' }
             );
             return; // Keep the edit context active
@@ -1424,7 +1424,7 @@ _Author: csdlmysql_
           // Complete the task now
           const completedTask = await this.taskRepo.updateTask({ id: taskId, status: 'completed' });
           if (completedTask) {
-            const messageContent = `✅ Task hoàn thành thành công\\!\\n\\n📋 \\*${this.escapeMarkdownV2(completedTask.title)}\\*\\n📝 ${this.escapeMarkdownV2(completedTask.description || '')}\\n✨ Trạng thái: Completed`;
+            const messageContent = `✅ Task hoàn thành thành công\\n\\n📋 \\*${this.escapeMarkdownV2(completedTask.title)}\\*\\n📝 ${this.escapeMarkdownV2(completedTask.description || '')}\\n✨ Trạng thái: Completed`;
             
             console.log('[COMPLETE_TASK] Sending success message:', messageContent);
             
@@ -1438,7 +1438,7 @@ _Author: csdlmysql_
           // Normal update
           await this.bot.sendMessage(
             msg.chat.id,
-            this.escapeMarkdownV2(`✅ Task ${field} updated successfully\\!\\n\\n📋 *${updatedTask.title}*\\n${field === 'description' ? `📝 ${updatedTask.description || 'No description'}` : ''}`),
+            this.escapeMarkdownV2(`✅ Task ${field} updated successfully\\n\\n📋 *${updatedTask.title}*\\n${field === 'description' ? `📝 ${updatedTask.description || 'No description'}` : ''}`),
             { parse_mode: 'MarkdownV2' }
           );
         }
@@ -1722,7 +1722,7 @@ _Author: csdlmysql_
       if (user.telegram_id === telegramId) {
         await this.bot.sendMessage(
           msg.chat.id,
-          this.escapeMarkdownV2('❌ You cannot delete yourself!'),
+          this.escapeMarkdownV2('❌ You cannot delete yourself'),
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -1877,7 +1877,7 @@ _Author: csdlmysql_
       
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2('✅ Work reminders sent successfully!'),
+        this.escapeMarkdownV2('✅ Work reminders sent successfully'),
         { parse_mode: 'MarkdownV2' }
       );
 
@@ -2250,7 +2250,7 @@ _Author: csdlmysql_
   }
 
   async startBot(): Promise<void> {
-    console.log('🤖 Telegram bot started successfully!');
+    console.log('🤖 Telegram bot started successfully');
     // Start daily report scheduler
     this.dailyReportService.startScheduler();
   }
