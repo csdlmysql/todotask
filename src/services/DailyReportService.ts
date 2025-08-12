@@ -126,9 +126,9 @@ export class DailyReportService {
       const activityMap = new Map(userActivities.map(a => [a.user_id, a]));
       
       // Calculate totals with more metrics (convert strings to numbers)
-      const totalTasksCreated = userActivities.reduce((sum, a) => sum + parseInt(a.created_today, 10), 0);
-      const totalTasksCompleted = userActivities.reduce((sum, a) => sum + parseInt(a.completed_today, 10), 0);
-      const totalTasksUpdated = userActivities.reduce((sum, a) => sum + parseInt(a.updated_today, 10), 0);
+      const totalTasksCreated = userActivities.reduce((sum, a) => sum + (parseInt(a.created_today, 10) || 0), 0);
+      const totalTasksCompleted = userActivities.reduce((sum, a) => sum + (parseInt(a.completed_today, 10) || 0), 0);
+      const totalTasksUpdated = userActivities.reduce((sum, a) => sum + (parseInt(a.updated_today, 10) || 0), 0);
       const activeUsersCount = userActivities.length;
       
       // Generate report content
@@ -242,8 +242,8 @@ export class DailyReportService {
     if (userActivities.length > 0) {
       // Sort by total activity (created + completed) - convert strings to numbers
       const sortedActivities = userActivities.sort((a, b) => 
-        (parseInt(b.created_today, 10) + parseInt(b.completed_today, 10)) - 
-        (parseInt(a.created_today, 10) + parseInt(a.completed_today, 10))
+        ((parseInt(b.created_today, 10) || 0) + (parseInt(b.completed_today, 10) || 0)) - 
+        ((parseInt(a.created_today, 10) || 0) + (parseInt(a.completed_today, 10) || 0))
       );
       
       report += `*🏆 BẢNG XẾP HẠNG HOẠT ĐỘNG:*\n`;
@@ -255,9 +255,9 @@ export class DailyReportService {
         
         // Ranking medal
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
-        const createdToday = parseInt(activity.created_today, 10);
-        const completedToday = parseInt(activity.completed_today, 10);
-        const updatedToday = parseInt(activity.updated_today, 10);
+        const createdToday = parseInt(activity.created_today, 10) || 0;
+        const completedToday = parseInt(activity.completed_today, 10) || 0;
+        const updatedToday = parseInt(activity.updated_today, 10) || 0;
         
         const userCompletionRate = createdToday > 0 
           ? Math.round((completedToday / createdToday) * 100) 
@@ -436,8 +436,8 @@ export class DailyReportService {
     // Top performers only
     if (userActivities.length > 0) {
       const sortedActivities = userActivities.sort((a: any, b: any) => 
-        (parseInt(b.created_today, 10) + parseInt(b.completed_today, 10)) - 
-        (parseInt(a.created_today, 10) + parseInt(a.completed_today, 10))
+        ((parseInt(b.created_today, 10) || 0) + (parseInt(b.completed_today, 10) || 0)) - 
+        ((parseInt(a.created_today, 10) || 0) + (parseInt(a.completed_today, 10) || 0))
       );
       
       report += `🏆 *Top hoạt động:*\n`;
@@ -448,8 +448,8 @@ export class DailyReportService {
         if (!user) continue;
         
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
-        const createdToday = parseInt(activity.created_today, 10);
-        const completedToday = parseInt(activity.completed_today, 10);
+        const createdToday = parseInt(activity.created_today, 10) || 0;
+        const completedToday = parseInt(activity.completed_today, 10) || 0;
         const rate = createdToday > 0 
           ? Math.round((completedToday / createdToday) * 100) 
           : 0;
@@ -463,8 +463,10 @@ export class DailyReportService {
   }
 
   private createProgressBar(percentage: number): string {
-    const filled = Math.round(percentage / 10);
-    const empty = 10 - filled;
+    // Ensure percentage is between 0 and 100
+    const safePercentage = Math.max(0, Math.min(100, percentage));
+    const filled = Math.round(safePercentage / 10);
+    const empty = Math.max(0, 10 - filled);
     const bar = '█'.repeat(filled) + '░'.repeat(empty);
     return `[${bar}]`;
   }
