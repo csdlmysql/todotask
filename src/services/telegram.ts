@@ -922,7 +922,10 @@ _Author: csdlmysql_
             
             await this.bot.sendMessage(
               chatId,
-              this.escapeMarkdownV2(`📝 Vui lòng cập nhật mô tả chi tiết công việc trước khi hoàn thành:\n\nTask: ${task.title}${currentDesc}\n\n⚠️ Nhập mô tả mới hoặc cập nhật mô tả hiện tại (ít nhất 10 ký tự).`),
+              this.escapeMarkdownV2(`📝 Vui lòng cập nhật mô tả chi tiết công việc trước khi hoàn thành:\n\nTask: `) + 
+              this.escapeMarkdownV2(task.title) + 
+              (currentDesc ? this.escapeMarkdownV2(currentDesc) : '') +
+              this.escapeMarkdownV2(`\n\n⚠️ Nhập mô tả mới hoặc cập nhật mô tả hiện tại (ít nhất 10 ký tự).`),
               { 
                 parse_mode: 'MarkdownV2',
                 reply_markup: {
@@ -1952,40 +1955,40 @@ _Author: csdlmysql_
       const cancelledTasks = todayTasks.filter(t => t.status === 'cancelled');
       
       // Build detailed report
-      let message = `📊 *CHI TIẾT BÁO CÁO - ${user.name}*\n`;
+      let message = `📊 \\*CHI TIẾT BÁO CÁO \\- ${this.escapeMarkdownV2(user.name)}\\*\n`;
       message += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
       
-      message += `*📈 Thống kê hôm nay:*\n`;
+      message += `\\*📈 Thống kê hôm nay:\\*\n`;
       message += `• Tạo mới: ${activity.created_today} tasks\n`;
       message += `• Hoàn thành: ${activity.completed_today} tasks\n`;
       message += `• Đang chờ: ${activity.pending_tasks} tasks\n`;
       message += `• Cập nhật: ${activity.updated_today} tasks\n\n`;
       
       if (completedTasks.length > 0) {
-        message += `*✅ Tasks đã hoàn thành (${completedTasks.length}):*\n\n`;
+        message += `\\*✅ Tasks đã hoàn thành \\(${completedTasks.length}\\):\\*\n\n`;
         completedTasks.forEach((task, index) => {
-          message += `${index + 1}. *Title:* ${task.title}\n`;
+          message += `${index + 1}\\. \\*Title:\\* ${this.escapeMarkdownV2(task.title)}\n`;
           if (task.description) {
-            message += `   *Description:* ${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}\n`;
+            message += `   \\*Description:\\* ${this.escapeMarkdownV2(task.description.substring(0, 100) + (task.description.length > 100 ? '...' : ''))}\n`;
           }
           if (task.category) {
-            message += `   *Category:* ${task.category}\n`;
+            message += `   \\*Category:\\* ${this.escapeMarkdownV2(task.category)}\n`;
           }
           if (task.tags && task.tags.length > 0) {
-            message += `   *Tags:* ${task.tags.join(', ')}\n`;
+            message += `   \\*Tags:\\* ${this.escapeMarkdownV2(task.tags.join(', '))}\n`;
           }
           message += '\n';
         });
       }
       
       if (pendingTasks.length > 0) {
-        message += `*⏳ Tasks đang thực hiện (${pendingTasks.length}):*\n\n`;
+        message += `\\*⏳ Tasks đang thực hiện \\(${pendingTasks.length}\\):\\*\n\n`;
         pendingTasks.forEach((task, index) => {
           const priorityEmoji = task.priority === 'urgent' ? '🔴' : 
                                task.priority === 'high' ? '🟡' : 
                                task.priority === 'medium' ? '🟢' : '⚪';
-          message += `${index + 1}. *Title:* ${task.title}\n`;
-          message += `   *Priority:* ${priorityEmoji} ${task.priority}\n`;
+          message += `${index + 1}\\. \\*Title:\\* ${this.escapeMarkdownV2(task.title)}\n`;
+          message += `   \\*Priority:\\* ${priorityEmoji} ${this.escapeMarkdownV2(task.priority)}\n`;
           
           if (task.due_date) {
             const dueDate = new Date(task.due_date);
@@ -2003,41 +2006,41 @@ _Author: csdlmysql_
             } else {
               deadlineStatus = `📅 Còn ${diffDays} ngày`;
             }
-            message += `   *Deadline:* ${deadlineStatus} (${dueDate.toLocaleDateString('vi-VN')})\n`;
+            message += `   \\*Deadline:\\* ${this.escapeMarkdownV2(deadlineStatus)} \\(${this.escapeMarkdownV2(dueDate.toLocaleDateString('vi-VN'))}\\)\n`;
           }
           
           if (task.description) {
-            message += `   *Description:* ${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}\n`;
+            message += `   \\*Description:\\* ${this.escapeMarkdownV2(task.description.substring(0, 100) + (task.description.length > 100 ? '...' : ''))}\n`;
           }
           
           if (task.category) {
-            message += `   *Category:* ${task.category}\n`;
+            message += `   \\*Category:\\* ${this.escapeMarkdownV2(task.category)}\n`;
           }
           
           if (task.tags && task.tags.length > 0) {
-            message += `   *Tags:* ${task.tags.join(', ')}\n`;
+            message += `   \\*Tags:\\* ${this.escapeMarkdownV2(task.tags.join(', '))}\n`;
           }
           
-          message += `   *Status:* ${task.status}\n`;
-          message += `   *Created:* ${new Date(task.created_at).toLocaleDateString('vi-VN')}\n`;
+          message += `   \\*Status:\\* ${this.escapeMarkdownV2(task.status)}\n`;
+          message += `   \\*Created:\\* ${this.escapeMarkdownV2(new Date(task.created_at).toLocaleDateString('vi-VN'))}\n`;
           message += '\n';
         });
       }
       
       if (cancelledTasks.length > 0) {
-        message += `*❌ Tasks đã hủy (${cancelledTasks.length}):*\n`;
+        message += `\\*❌ Tasks đã hủy \\(${cancelledTasks.length}\\):\\*\n`;
         cancelledTasks.slice(0, 3).forEach((task, index) => {
-          message += `${index + 1}. ${task.title}\n`;
+          message += `${index + 1}\\. ${this.escapeMarkdownV2(task.title)}\n`;
         });
         if (cancelledTasks.length > 3) {
-          message += `... và ${cancelledTasks.length - 3} tasks khác\n`;
+          message += `\\.\\.\\. và ${cancelledTasks.length - 3} tasks khác\n`;
         }
       }
       
       // Send detailed report
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(message),
+        message,
         { 
           parse_mode: 'MarkdownV2',
           reply_markup: {
