@@ -306,7 +306,7 @@ export class TelegramService {
     } catch (error) {
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(`❌ Error: ${error}`),
+        this.escapeMarkdownV2(`❌ Error: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -361,7 +361,7 @@ export class TelegramService {
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error: ${error}`),
+        this.escapeMarkdownV2(`❌ Error: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -544,7 +544,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(`❌ Error loading all tasks: ${error}`),
+        this.escapeMarkdownV2(`❌ Error loading all tasks: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -631,7 +631,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(`❌ Error loading tasks: ${error}`),
+        this.escapeMarkdownV2(`❌ Error loading tasks: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -778,7 +778,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(`❌ Error loading statistics: ${error}`),
+        this.escapeMarkdownV2(`❌ Error loading statistics: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1024,7 +1024,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(`❌ Error: ${error}`),
+        this.escapeMarkdownV2(`❌ Error: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1316,7 +1316,7 @@ _Author: csdlmysql_
             this.pendingRegistrations.delete(telegramId);
             await this.bot.sendMessage(
               msg.chat.id,
-              this.escapeMarkdownV2(`❌ Registration failed: ${error}`),
+              this.escapeMarkdownV2(`❌ Registration failed: ${error instanceof Error ? error.message : String(error)}`),
               { parse_mode: 'MarkdownV2' }
             );
           }
@@ -1432,9 +1432,10 @@ _Author: csdlmysql_
 
     } catch (error) {
       this.pendingEdits.delete(telegramId);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error updating task: ${error}`),
+        this.escapeMarkdownV2(`❌ Error updating task: ${errorMessage}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1486,7 +1487,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error loading users: ${error}`),
+        this.escapeMarkdownV2(`❌ Error loading users: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1559,7 +1560,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error activating user: ${error}`),
+        this.escapeMarkdownV2(`❌ Error activating user: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1590,7 +1591,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error generating report: ${error}`),
+        this.escapeMarkdownV2(`❌ Error generating report: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1640,7 +1641,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error: ${error}`),
+        this.escapeMarkdownV2(`❌ Error: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1729,7 +1730,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error deleting user: ${error}`),
+        this.escapeMarkdownV2(`❌ Error deleting user: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1818,7 +1819,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error updating user: ${error}`),
+        this.escapeMarkdownV2(`❌ Error updating user: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1851,7 +1852,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error sending reminders: ${error}`),
+        this.escapeMarkdownV2(`❌ Error sending reminders: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -1901,7 +1902,7 @@ _Author: csdlmysql_
     } catch (error) {
       await this.bot.sendMessage(
         msg.chat.id,
-        this.escapeMarkdownV2(`❌ Error: ${error}`),
+        this.escapeMarkdownV2(`❌ Error: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -2051,7 +2052,7 @@ _Author: csdlmysql_
       console.error('Error sending user detailed report:', error);
       await this.bot.sendMessage(
         chatId,
-        this.escapeMarkdownV2(`❌ Error loading details: ${error}`),
+        this.escapeMarkdownV2(`❌ Error loading details: ${error instanceof Error ? error.message : String(error)}`),
         { parse_mode: 'MarkdownV2' }
       );
     }
