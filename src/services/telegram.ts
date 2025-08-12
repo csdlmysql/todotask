@@ -1345,6 +1345,15 @@ _Author: csdlmysql_
     if (!userInput) return;
 
     const { taskId, field, nextAction } = editContext;
+    
+    console.log('[EDIT_STEP] Processing edit:', {
+      telegramId,
+      taskId,
+      field,
+      nextAction,
+      userInput: userInput.substring(0, 100) + (userInput.length > 100 ? '...' : ''),
+      inputLength: userInput.length
+    });
 
     try {
       // Get the task to ensure it exists
@@ -1397,6 +1406,7 @@ _Author: csdlmysql_
         if (nextAction === 'complete' && field === 'description') {
           // Validate description length
           if (userInput.length < 10) {
+            console.log('[COMPLETE_TASK] Description too short:', userInput);
             await this.bot.sendMessage(
               msg.chat.id,
               this.escapeMarkdownV2('⚠️ Mô tả quá ngắn\\! Cần ít nhất 10 ký tự\\. Vui lòng thử lại\\.'),
@@ -1405,12 +1415,22 @@ _Author: csdlmysql_
             return; // Keep the edit context active
           }
           
+          console.log('[COMPLETE_TASK] Completing task with description:', {
+            taskId,
+            userInput,
+            updatedTask: updatedTask?.description
+          });
+          
           // Complete the task now
           const completedTask = await this.taskRepo.updateTask({ id: taskId, status: 'completed' });
           if (completedTask) {
+            const messageContent = `✅ Task hoàn thành thành công\\!\\n\\n📋 \\*${this.escapeMarkdownV2(completedTask.title)}\\*\\n📝 ${this.escapeMarkdownV2(completedTask.description || '')}\\n✨ Trạng thái: Completed`;
+            
+            console.log('[COMPLETE_TASK] Sending success message:', messageContent);
+            
             await this.bot.sendMessage(
               msg.chat.id,
-              this.escapeMarkdownV2(`✅ Task hoàn thành thành công\\!\\n\\n📋 *${completedTask.title}*\\n📝 ${completedTask.description}\\n✨ Trạng thái: Completed`),
+              messageContent,
               { parse_mode: 'MarkdownV2' }
             );
           }
@@ -1436,6 +1456,15 @@ _Author: csdlmysql_
     } catch (error) {
       this.pendingEdits.delete(telegramId);
       const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      console.error('[EDIT_STEP] Error updating task:', {
+        error,
+        errorMessage,
+        taskId: editContext?.taskId,
+        field: editContext?.field,
+        nextAction: editContext?.nextAction
+      });
+      
       await this.bot.sendMessage(
         msg.chat.id,
         this.escapeMarkdownV2(`❌ Error updating task: ${errorMessage}`),
