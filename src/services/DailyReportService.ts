@@ -108,14 +108,19 @@ export class DailyReportService {
 
   async generateAndSendDailyReport(sendToAdmins: boolean = true, compact: boolean = false): Promise<string> {
     try {
+      console.log('📊 Generating daily report...');
+      
       // Get all active users
       const allUsers = await this.userRepo.getAllUsers({ status: 'active', role: 'user' });
+      console.log('Active users:', allUsers.length);
       
       // Get users without activity today
       const usersWithoutActivity = await this.userRepo.getUsersWithoutActivityToday();
+      console.log('Users without activity:', usersWithoutActivity.length);
       
       // Get all user activities today
       const userActivities = await this.taskRepo.getAllUsersActivityToday();
+      console.log('User activities:', userActivities.length);
       
       // Create a map for easy lookup
       const activityMap = new Map(userActivities.map(a => [a.user_id, a]));
@@ -162,6 +167,10 @@ export class DailyReportService {
       return report;
     } catch (error) {
       console.error('Error generating daily report:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }
@@ -548,13 +557,16 @@ export class DailyReportService {
   }
 
   async getReportHistory(adminId: string, limit: number = 7): Promise<any[]> {
+    // Ensure limit is positive
+    const safeLimit = Math.max(1, Math.abs(limit || 7));
+    
     const query = `
       SELECT * FROM daily_reports 
       WHERE admin_id = $1
       ORDER BY report_date DESC
       LIMIT $2
     `;
-    const result = await this.db.query(query, [adminId, limit]);
+    const result = await this.db.query(query, [adminId, safeLimit]);
     return result.rows;
   }
 

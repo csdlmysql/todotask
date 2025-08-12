@@ -73,8 +73,10 @@ export class TaskRepository {
     query += ' ORDER BY created_at DESC';
 
     if (filters?.limit) {
+      // Ensure limit is positive
+      const safeLimit = Math.max(1, Math.abs(filters.limit));
       query += ` LIMIT $${++paramCount}`;
-      values.push(filters.limit);
+      values.push(safeLimit);
     }
 
     const result = await this.db.query(query, values);
